@@ -1,0 +1,38 @@
+spring:
+  # for sql
+  datasource:
+    url: jdbc:mysql://119.91.61.248:3306/xiaoxi_daily
+    username: shiyixi
+    password: '@SY315131x666'
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # for redis
+  redis:
+    host: 119.91.61.248
+    port: 6379
+    password: '@SY315131x666'
+  cache:
+    redis:
+      # 缓存过期时间
+      time-to-live: 1800000
+
+# for mybatis-plus
+mybatis-plus:
+  configuration:
+    # 在映射实体或者属性时，将数据库中表名和字段名中的下划线去掉，按照驼峰命名法映射
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: ASSIGN_ID
+
+server:
+  port: 8081
+
+system:
+  #静态资源文件目录
+#  upload-filepath: E:/apk/
+  upload-filepath: /root/apk/
+  #浏览静态资源的url路径
+  view-path: /view
+  expire-time: 36000000

@@ -3,6 +3,7 @@ package icu.shiyixi.dailybackend.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.injector.methods.Insert;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import icu.shiyixi.dailybackend.bean.User;
 import icu.shiyixi.dailybackend.dto.UserLoginDto;
 import icu.shiyixi.dailybackend.dto.UserRegisterDto;
@@ -130,7 +131,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String password = userLoginDto.getPassword();
         String username = userLoginDto.getUsername();
         String vcode = userLoginDto.getVcode();
+        String phone = userLoginDto.getPhone();
+        Boolean isPhone = userLoginDto.getIsPhone();
 
+        // 检查用户名或手机号其一是否传入了
+        if(username == null && phone == null) {
+            log.info("用户：{}，手机号：{}，正在登录，用户名或手机号为空", username, phone);
+            map.put("code", 0);
+            map.put("msg", "用户名或手机号不能为空");
+            return map;
+        }
         // 检查验证码是否传入了
         if(vcode == null) {
             log.info("用户：{}正在登录，验证码为空", username);
@@ -140,23 +150,23 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         // 检查密码是否传入了
         if(password == null) {
-            log.info("用户：{}正在登录，验证码为空", password);
+            log.info("用户：{}正在登录，验证码为空", username);
             map.put("code", 0);
             map.put("msg", "密码不能为空");
             return map;
         }
-        // 检查用户名是否传入了
-        if(username == null) {
-            log.info("用户：{}正在登录，用户名为空", username);
+        // 检查判断字段是否传入了
+        if(isPhone == null) {
+            log.info("用户：{}正在登录，判断字段为空", username);
             map.put("code", 0);
-            map.put("msg", "用户名不能为空");
+            map.put("msg", "判断字段不能为空");
             return map;
         }
 
         // 查询验证码是否正确
         boolean b = checkVcode(vcode);
         if(!b) {
-            log.info("用户：{}正在登录，验证码为{}，但是查询cache不存在", username, vcode);
+            log.info("用户：{}，手机号：{}，正在登录，验证码为{}，但是查询cache不存在", username, phone, vcode);
             map.put("code", 0);
             map.put("msg", "验证码错误");
             return map;
@@ -168,20 +178,29 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         userLoginDto.setPassword(password);
 
         // 查询数据库看用户是否存在
-        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(User::getUsername, userLoginDto.getUsername());
-        User checkedUser = getOne(queryWrapper);
+        User checkedUser;
+        // 如果是用户名
+        if(isPhone) {
+            LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(User::getPhone, phone);
+            checkedUser = getOne(queryWrapper);
+        }else {
+            LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(User::getUsername, username);
+            checkedUser = getOne(queryWrapper);
+        }
+
 
         if(checkedUser == null) {
-            log.info("用户：{}正在登录，但用户不存在",username);
+            log.info("用户：{}，手机号：{}，正在登录，但用户不存在",username, phone);
             map.put("code", 0);
             map.put("msg", "用户不存在");
         } else if(!Objects.equals(checkedUser.getPassword(), password)) {
-            log.info("用户：{}正在登录，但用密码错误",username);
+            log.info("用户：{}，手机号：{}，正在登录，但用密码错误",checkedUser.getUsername(), phone);
             map.put("code", 0);
             map.put("msg", "密码错误");
         } else {
-            log.info("用户：{}正在登录，登录成功",username);
+            log.info("用户：{}正在登录，登录成功",checkedUser.getUsername());
             map.put("code", 1);
             map.put("msg", "登录成功");
             map.put("userId", checkedUser.getId().toString());

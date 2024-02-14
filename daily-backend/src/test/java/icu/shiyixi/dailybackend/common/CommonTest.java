@@ -1,6 +1,7 @@
 package icu.shiyixi.dailybackend.common;
 
 import com.google.code.kaptcha.impl.DefaultKaptcha;
+import icu.shiyixi.dailybackend.bean.Plan;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,5 +34,11 @@ public class CommonTest {
         }
         String vcode = "data:image/jpeg;base64,"+ Base64Utils.encodeToString(os.toByteArray());
         System.out.println(vcode);
+    }
+
+    @Test
+    public void testPlanControlelr(){
+        Plan plan = new Plan();
+        plan.setName("测试用户");
     }
 }

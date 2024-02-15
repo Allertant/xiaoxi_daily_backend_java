@@ -28,10 +28,6 @@ public class PlanDetail implements Serializable {
      */
     private LocalTime endTime;
     /**
-     * 该计划项是否正在被使用
-     */
-    private int isOn;
-    /**
      * 该计划项的顺序
      */
     private int orderNum;

@@ -34,6 +34,10 @@ public class Plan implements Serializable {
     /**
      * 更新时间
      */
-    @TableField(fill = FieldFill.INSERT)
+    @TableField(fill = FieldFill.UPDATE)
     private LocalDateTime updateTime;
+    /**
+     * 是否正在使用
+     */
+    private int isOn;
 }

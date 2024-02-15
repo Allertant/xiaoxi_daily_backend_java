@@ -27,13 +27,23 @@ public class PlanController {
     }
 
     @GetMapping("/{planId}")
-    public R<PlanObjectDto> planObjectDto(@PathVariable("planId") Long planId) {
+    public R<PlanObjectDto> getPlanObjectDto(@PathVariable("planId") Long planId) {
         return planService.getPlanObjDto(planId);
     }
 
     @PostMapping("/add")
-    public R<String> add(@RequestBody PlanObjectDto dto) {
+    public R<String> addPlanObjectDto(@RequestBody PlanObjectDto dto) {
         Long userId = BaseContext.getCurrentId();
         return planService.addPlan(dto);
+    }
+
+    @PostMapping("/update")
+    public R<String> updatePlanObjectDto(@RequestBody PlanObjectDto dto) {
+        return planService.updatePlan(dto);
+    }
+
+    @PostMapping("/seton/{planId}")
+    public R<String> setOnPlanByPlanId(@PathVariable("planId") Long planId) {
+        return planService.setOnPlanByPlanId(planId);
     }
 }

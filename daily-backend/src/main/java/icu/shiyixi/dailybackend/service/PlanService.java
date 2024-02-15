@@ -28,4 +28,18 @@ public interface PlanService extends IService<Plan> {
      * @return 字符串提示
      */
     R<String> addPlan(PlanObjectDto dto);
+
+    /**
+     * 修改计划
+     * @param dto 待修改的对象
+     * @return 字符串提示
+     */
+    R<String> updatePlan(PlanObjectDto dto);
+
+    /**
+     * 根据计划 id 设置使用该计划
+     * @param planId 计划id
+     * @return 字符串提示
+     */
+    R<String> setOnPlanByPlanId(Long planId);
 }

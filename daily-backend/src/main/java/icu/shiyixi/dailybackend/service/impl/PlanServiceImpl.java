@@ -115,8 +115,10 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         planDetailMapper.delete(new LambdaQueryWrapper<PlanDetail>()
                 .eq(PlanDetail::getPlanId, plan.getId()));
         List<PlanDetail> details = dto.getDetails();
+        // 2.2 插入计划项目
         details.forEach(item -> {
             // 2.2 依次插入计划项
+            item.setPlanId(planId);
             planDetailMapper.insert(item);
         });
         log.info("计划id：{},更新成功", plan.getId());
@@ -136,9 +138,10 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
             return R.error("计划不存在");
         }
 
-        // 2. 清除原先用户的使用权限
+        // 2. 清除该用户所有计划的使用权限
         List<Plan> plans = planMapper.selectList(new LambdaQueryWrapper<Plan>()
-                .eq(Plan::getIsOn, 1));
+                .eq(Plan::getIsOn, 1)
+                .eq(Plan::getUserId, userId));
         plans.forEach(item -> {
             item.setIsOn(0);
             planMapper.updateById(item);
@@ -293,6 +296,7 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         // 获取某个计划的所有打卡记录
         List<PlanRecord> planRecords = planRecordMapper.selectList(new LambdaQueryWrapper<PlanRecord>()
                 .eq(PlanRecord::getPlanId, plan.getId()));
+
         // 转移对象
         ArrayList<PlanRecordDto> planRecordDtos = new ArrayList<>();
         planRecords.forEach(item -> {
@@ -309,20 +313,15 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         // 给打卡记录添加开始时间、结束时间字段
         planRecordDtos.forEach(planRecordDto -> {
             Long planDetailId = planRecordDto.getPlanDetailId();
-            AtomicReference<LocalTime> beginTime = new AtomicReference<>();
-            AtomicReference<LocalTime> endTime = new AtomicReference<>();
-            AtomicReference<Integer> orderNum = new AtomicReference<>();
+
             planDetails.forEach(planDetail -> {
                 if(Objects.equals(planDetailId, planDetail.getId())) {
                     // 找到对应的计划项
-                    beginTime.set(planDetail.getBeginTime());
-                    endTime.set(planDetail.getEndTime());
-                    orderNum.set(planDetail.getOrderNum());
+                    planRecordDto.setBeginTime(planDetail.getBeginTime());
+                    planRecordDto.setEndTime(planDetail.getEndTime());
+                    planRecordDto.setOrderNum(planDetail.getOrderNum());
                 }
             });
-            planRecordDto.setBeginTime(beginTime.get());
-            planRecordDto.setEndTime(endTime.get());
-            planRecordDto.setOrderNum(orderNum.get());
         });
 
         return R.success(planRecordDtos);

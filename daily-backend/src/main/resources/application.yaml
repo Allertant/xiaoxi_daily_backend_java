@@ -27,7 +27,7 @@ mybatis-plus:
       id-type: ASSIGN_ID
 
 server:
-  port: 8080
+  port: 8081
 
 system:
   #静态资源文件目录

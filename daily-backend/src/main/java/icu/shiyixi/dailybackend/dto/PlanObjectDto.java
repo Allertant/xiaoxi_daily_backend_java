@@ -3,6 +3,7 @@ package icu.shiyixi.dailybackend.dto;
 import icu.shiyixi.dailybackend.bean.Plan;
 import icu.shiyixi.dailybackend.bean.PlanDetail;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.List;
 

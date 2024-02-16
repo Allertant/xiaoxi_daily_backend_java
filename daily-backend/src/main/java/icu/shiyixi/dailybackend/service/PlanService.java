@@ -2,8 +2,11 @@ package icu.shiyixi.dailybackend.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import icu.shiyixi.dailybackend.bean.Plan;
+import icu.shiyixi.dailybackend.bean.PlanRecord;
 import icu.shiyixi.dailybackend.common.R;
+import icu.shiyixi.dailybackend.dto.PlanDetailsDto;
 import icu.shiyixi.dailybackend.dto.PlanObjectDto;
+import icu.shiyixi.dailybackend.dto.PlanRecordDto;
 
 import java.util.List;
 
@@ -42,4 +45,23 @@ public interface PlanService extends IService<Plan> {
      * @return 字符串提示
      */
     R<String> setOnPlanByPlanId(Long planId);
+
+    /**
+     * 获取要被展示的计划详情
+     * @return 要被展示的计划详情
+     */
+    R<List<PlanDetailsDto>> getDetailsForShow();
+
+    /**
+     * 开始计划
+     * @param planDetailId 计划项id
+     * @return 字符串说明
+     */
+    R<String> beginPlan(Long planDetailId);
+
+    /**
+     * 获取计划历史
+     * @return 历史记录列表
+     */
+    R<List<PlanRecordDto>> getPlanHistory();
 }

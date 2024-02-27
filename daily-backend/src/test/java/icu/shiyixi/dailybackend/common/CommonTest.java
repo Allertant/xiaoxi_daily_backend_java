@@ -1,7 +1,7 @@
 package icu.shiyixi.dailybackend.common;
 
 import com.google.code.kaptcha.impl.DefaultKaptcha;
-import icu.shiyixi.dailybackend.bean.Plan;
+import icu.shiyixi.dailybackend.model.domain.Plan;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -12,7 +12,6 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 @SpringBootTest
 public class CommonTest {

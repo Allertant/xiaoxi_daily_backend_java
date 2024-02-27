@@ -2,50 +2,46 @@ package icu.shiyixi.dailybackend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import icu.shiyixi.dailybackend.bean.*;
 import icu.shiyixi.dailybackend.common.BaseContext;
+import icu.shiyixi.dailybackend.common.ErrorCode;
 import icu.shiyixi.dailybackend.common.R;
-import icu.shiyixi.dailybackend.dto.PlanDetailsDto;
-import icu.shiyixi.dailybackend.dto.PlanObjectDto;
-import icu.shiyixi.dailybackend.dto.PlanRecordDto;
+import icu.shiyixi.dailybackend.dto.plan.PlanDetailsDto;
+import icu.shiyixi.dailybackend.dto.plan.PlanObjectDto;
+import icu.shiyixi.dailybackend.dto.plan.PlanRecordDto;
+import icu.shiyixi.dailybackend.exception.BusinessException;
 import icu.shiyixi.dailybackend.mapper.PlanDetailMapper;
 import icu.shiyixi.dailybackend.mapper.PlanMapper;
 import icu.shiyixi.dailybackend.mapper.PlanRecordMapper;
+import icu.shiyixi.dailybackend.model.domain.Plan;
+import icu.shiyixi.dailybackend.model.domain.PlanDetail;
+import icu.shiyixi.dailybackend.model.domain.PlanRecord;
 import icu.shiyixi.dailybackend.service.PlanService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.annotation.Resource;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Service
 public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements PlanService {
-    @Autowired
+    @Resource
     private PlanMapper planMapper;
-    @Autowired
+    @Resource
     private PlanDetailMapper planDetailMapper;
-    @Autowired
+    @Resource
     private PlanRecordMapper planRecordMapper;
 
 
     @Override
-    public List<Plan> getPlansByUserId(Long userId) {
-        LambdaQueryWrapper<Plan> q = new LambdaQueryWrapper<>();
-        q.eq(Plan::getUserId, userId);
-        return planMapper.selectList(q);
-    }
-
-    @Override
-    public R<PlanObjectDto> getPlanObjDto(Long planId) {
+    public R<PlanObjectDto> getPlanObjDtoByPlanId(Long planId) {
         // 准备返回的对象
         PlanObjectDto dto = new PlanObjectDto();
 
@@ -53,7 +49,7 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         Plan plan = planMapper.selectById(planId);
         BeanUtils.copyProperties(plan, dto);
 
-        // 获取计划项并插入
+        // 获取计划项
         LambdaQueryWrapper<PlanDetail> q = new LambdaQueryWrapper<>();
         q.eq(PlanDetail::getPlanId, planId);
         List<PlanDetail> planDetails = planDetailMapper.selectList(q);
@@ -65,11 +61,18 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
     }
 
     @Override
+    public List<Plan> getPlansByUserId(Long userId) {
+        LambdaQueryWrapper<Plan> q = new LambdaQueryWrapper<>();
+        q.eq(Plan::getUserId, userId);
+        return planMapper.selectList(q);
+    }
+
+    @Override
     @Transactional
     public R<String> addPlan(PlanObjectDto dto) {
         // 验证数据合法性
         if(dto.getName() == null) {
-            return R.error("计划名为空");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "计划名不能为空");
         }
 
         // 准备要插入的对象
@@ -95,6 +98,27 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
     }
 
     @Override
+    public R<String> removePlan(Long planId) {
+        Long userId = BaseContext.getCurrentId();
+        // 检查该计划是否属于该用户
+        LambdaQueryWrapper<Plan> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Plan::getUserId, userId);
+        wrapper.eq(Plan::getId,planId);
+        int count = this.count(wrapper);
+        if(count == 0) {
+            throw new BusinessException(ErrorCode.PLAN_NULL);
+        }
+
+        // 删除用户
+        boolean b = this.removeById(planId);
+        if(b) {
+            return R.success("删除成功", "删除用户成功");
+        }else {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "系统异常");
+        }
+    }
+
+    @Override
     @Transactional
     public R<String> updatePlan(PlanObjectDto dto) {
         // 查询计划是否存在
@@ -103,7 +127,7 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         if(plan == null) {
             // 计划不存在
             log.info("计划id：{}，计划不存在", planId);
-            return R.error("计划不存在");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "计划不存在");
         }
 
         // 1. 更新计划
@@ -129,13 +153,12 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
     @Transactional
     public R<String> setOnPlanByPlanId(Long planId) {
         Long userId = BaseContext.getCurrentId();
-
         // 1. 查询该用户是否为该计划的指定人
         Plan plan = planMapper.selectOne(new LambdaQueryWrapper<Plan>()
                 .eq(Plan::getId, planId)
                 .eq(Plan::getUserId, userId));
         if(plan == null) {
-            return R.error("计划不存在");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "计划不存在");
         }
 
         // 2. 清除该用户所有计划的使用权限
@@ -150,25 +173,22 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         // 3. 设置该用户使用该计划
         plan.setIsOn(1);
         planMapper.updateById(plan);
-        return R.success("设置成功");
+        return R.success("设置成功", "设置成功");
     }
 
     @Override
-    public R<List<PlanDetailsDto>> getDetailsForShow() {
+    public R<List<PlanDetailsDto>> getDetails() {
         Long userId = BaseContext.getCurrentId();
-        // 获取正在被使用的计划
-        Plan plan = planMapper.selectOne(new LambdaQueryWrapper<Plan>()
-                .eq(Plan::getIsOn, 1)
-                .eq(Plan::getUserId, userId));
-        if(plan == null) {
-            return R.error("当前没有使用中的计划");
-        }
-
-        // 获取正在使用的计划项列表
+        Plan plan = getOne(new LambdaQueryWrapper<Plan>()
+                .eq(Plan::getUserId, userId)
+                .eq(Plan::getIsOn, 1));
         Long planId = plan.getId();
+
+        // 获取原始计划项数组
         List<PlanDetail> planDetails = planDetailMapper.selectList(new LambdaQueryWrapper<PlanDetail>()
                 .eq(PlanDetail::getPlanId, planId));
-        // 转换
+
+        // 转换成计划项 dto 数组
         List<PlanDetailsDto> planDetailsDtos = new ArrayList<>();
         planDetails.forEach(plandetail -> {
             PlanDetailsDto planDetailsDto = new PlanDetailsDto();
@@ -181,8 +201,6 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
 
         // 设置计划项的信息
         planDetailsDtos.forEach(item -> {
-            // 计划项id
-            Long planDetailId = item.getId();
 
             // 时间范围
             LocalTime now = LocalTime.now();
@@ -196,7 +214,7 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
                     inRecord = true;
                     break;
                 }
-            };
+            }
 
             if(now.isBefore(beginTime)) {
                 item.setCode(1001);
@@ -223,7 +241,7 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
                 item.setMsg("已完成");
             }
         });
-         return R.success(planDetailsDtos);
+        return R.success(planDetailsDtos);
     }
 
     @Override
@@ -236,9 +254,9 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
                 .eq(Plan::getIsOn, 1)
                 .eq(Plan::getUserId, userId));
         if(plan == null) {
-            return R.error("当前没有可用的计划");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前没有可用的计划");
         }
-        // 1.2 获取正在使用的计划项列表
+        // 1.2 打卡
         Long planId = plan.getId();
         List<PlanDetail> planDetails = planDetailMapper.selectList(new LambdaQueryWrapper<PlanDetail>()
                 .eq(PlanDetail::getPlanId, planId));
@@ -250,7 +268,7 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
             }
         });
         if(!isExisting.get()) {
-            return R.error("计划项id不存在");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "计划项不存在");
         }
 
         // 2. 判断该计划项是否已经打卡过了
@@ -264,7 +282,7 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         });
         if(isBegin.get()) {
             log.info("planDetailId:{}, 该记录已经打卡过了", planDetailId);
-            return R.error("该记录已经打卡过了");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "该项目已经打卡过了");
         }
 
         // 3. 打卡
@@ -278,9 +296,8 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         }else {
             return R.success("打开失败");
         }
-
-
     }
+
 
     @Override
     public R<List<PlanRecordDto>> getPlanHistory() {
@@ -290,12 +307,14 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
                 .eq(Plan::getIsOn, 1)
                 .eq(Plan::getUserId, userId));
         if(plan == null) {
-            return R.error("当前没有使用中的计划");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前没有可用的计划");
         }
+
+        Long planId = plan.getId();
 
         // 获取某个计划的所有打卡记录
         List<PlanRecord> planRecords = planRecordMapper.selectList(new LambdaQueryWrapper<PlanRecord>()
-                .eq(PlanRecord::getPlanId, plan.getId()));
+                .eq(PlanRecord::getPlanId, planId));
 
         // 转移对象
         ArrayList<PlanRecordDto> planRecordDtos = new ArrayList<>();
@@ -306,7 +325,6 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         });
 
         // 获取正在使用的计划项列表
-        Long planId = plan.getId();
         List<PlanDetail> planDetails = planDetailMapper.selectList(new LambdaQueryWrapper<PlanDetail>()
                 .eq(PlanDetail::getPlanId, planId));
 
@@ -326,4 +344,6 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
 
         return R.success(planRecordDtos);
     }
+
+
 }

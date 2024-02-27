@@ -2,17 +2,26 @@ package icu.shiyixi.dailybackend.filter;
 
 import com.alibaba.fastjson.JSON;
 import icu.shiyixi.dailybackend.common.BaseContext;
+import icu.shiyixi.dailybackend.common.ErrorCode;
 import icu.shiyixi.dailybackend.common.R;
+import icu.shiyixi.dailybackend.dto.user.UserRegisterResDto;
+import icu.shiyixi.dailybackend.exception.BusinessException;
 import icu.shiyixi.dailybackend.token.TokenUtils;
+import icu.shiyixi.dailybackend.utils.CookieSetterUtils;
+import jdk.nashorn.internal.parser.Token;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.AntPathMatcher;
+import sun.security.ssl.CookieExtension;
 
 import javax.servlet.*;
 import javax.servlet.annotation.WebFilter;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
+import java.util.Objects;
 
 /**
  * ClassName : LoginCheckFilter
@@ -22,7 +31,7 @@ import java.io.IOException;
  * @Create : 2023/8/10 13:12
  */
 @Slf4j
-@WebFilter(filterName = "Filter02", urlPatterns = "/*")
+@WebFilter(filterName = "Filter01", urlPatterns = "/*")
 public class LoginCheckFilter implements Filter {
 
 
@@ -35,13 +44,11 @@ public class LoginCheckFilter implements Filter {
 
         //拦截器取到请求先进行判断，如果是OPTIONS请求，则放行
         if("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-            System.out.println("Method:OPTIONS");
             filterChain.doFilter(request, response);
         }
 
         // 1. 获取本次请求的uri
         String requestURI = request.getRequestURI();
-        // HttpSession session = request.getSession();
 
         // 静态资源和登录相关的不需要处理
         String[] urls = new String[]{
@@ -54,7 +61,7 @@ public class LoginCheckFilter implements Filter {
                 "/common/code",
                 "/admin/loginByCode"
         };
-        log.info("session adminId: {}", request.getSession().getAttribute("adminId"));
+
         // 2. 判断本次请求需要处理
         boolean check = check(urls, requestURI);
 
@@ -65,37 +72,32 @@ public class LoginCheckFilter implements Filter {
             return ;
         }
 
-        // 4-1. 判断登录状态，针对移动端用户，使用jwt字符串进行验证
-        String jwt = request.getHeader("jwt");
-        if(jwt != null) {
-            log.info("这是前端请求");
-            boolean verify = TokenUtils.verify(jwt);
-            if(verify) {
-                BaseContext.setCurrentId(TokenUtils.detoken(jwt));
-                filterChain.doFilter(request, response);
-                return ;
+        // 4. 判断登录状态，针对移动端用户，使用jwt字符串进行验证
+        Cookie[] cookies = request.getCookies();
+
+        for (Cookie cookie : cookies) {
+            log.info("cookie: {}", cookie.getName());
+            if (Objects.equals(cookie.getName(), "jwt")) {
+                String jwt = cookie.getValue();
+                if (!StringUtils.isAnyBlank(jwt)) {
+                    boolean verify = TokenUtils.verify(jwt);
+                    if (verify) {
+                        // 验证成功
+                        Long userId = TokenUtils.detoken(jwt);
+                        BaseContext.setCurrentId(userId);
+                        log.info("用户 {} 登录成功", userId);
+                        filterChain.doFilter(request, response);
+                        // 重新设置cookie
+                        CookieSetterUtils.setCookie(response, userId);
+                        return;
+                    }
+                }
+                break;
             }
         }
 
-
-        // 4-2. 判断登录状态，如果已经登录，则直接放行（针对管理端）
-        if(request.getSession().getAttribute("adminId") != null) {
-            Long adminId = (Long) request.getSession().getAttribute("adminId");
-            // 保存id数据到threadlocal中
-            BaseContext.setCurrentId(adminId);
-            // log.info("管理员已登录，管理员id为：{}", request.getSession().getAttribute("adminId"));
-            filterChain.doFilter(request, response);
-            return ;
-        }
-
-        /**
-         * .allowCredentials(true)
-         *                 .allowedHeaders("*")
-         *                 .allowedMethods("*")
-         *                 .allowedOriginPatterns("*");
-         */
-        // 5. 如果未登录则返回未登录结果，通过输出流对象向客户端响应数据
-        response.getWriter().write(JSON.toJSONString(R.error("NOTLOGIN")));
+        // 5. 如果未登录则直接报错
+        throw new BusinessException(ErrorCode.NOT_LOGIN, "用户未登录");
     }
 
     /**

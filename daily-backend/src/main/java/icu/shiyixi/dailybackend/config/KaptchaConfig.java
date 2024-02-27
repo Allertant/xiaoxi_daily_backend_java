@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import java.util.Properties;
 
 /**
- * 验证码生成器的效果
+ * 验证码生成器配置
  */
 @Configuration
 public class KaptchaConfig {

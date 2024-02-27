@@ -1,6 +1,7 @@
 package icu.shiyixi.dailybackend.common;
 
+/**
+ * 静态常量
+ */
 public class Constants {
-    public static final String initPassword = "123456";
-    public static final String exeName = "xiaoxi_record";
 }

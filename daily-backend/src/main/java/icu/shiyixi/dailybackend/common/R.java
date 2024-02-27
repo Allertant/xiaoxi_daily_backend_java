@@ -9,30 +9,76 @@ import java.util.Map;
 @Data
 public class R<T> implements Serializable {
 
-    private Integer code; //编码：1成功，0和其它数字为失败
-
-    private String msg; //错误信息
+    private int code; //编码：0成功，其它数字为失败
 
     private T data; //数据
 
-    private Map map = new HashMap(); //动态数据
+    private String msg; //错误信息
 
-    public static <T> R<T> success(T object) {
-        R<T> r = new R<T>();
-        r.data = object;
-        r.code = 1;
-        return r;
-    }
+    private String description; // 描述信息
 
-    public static <T> R<T> error(String msg) {
-        R r = new R();
-        r.msg = msg;
+
+    /**
+     * 成功的处理伙计
+     * @param data 返回的数据
+     * @return
+     */
+    public static <T> R<T> success(T data) {
+        R<T> r = new R<>();
         r.code = 0;
+        r.data = data;
+        r.msg = "ok";
+        r.description = "ok";
         return r;
     }
 
-    public R<T> add(String key, Object value) {
-        this.map.put(key, value);
-        return this;
+    /**
+     * 成功的处理伙计
+     * @param data 返回的数据
+     * @param msg 返回的消息
+     * @return R 对象
+     */
+    public static <T> R<T> success(T data, String msg) {
+        R<T> r = new R<>();
+        r.code = 0;
+        r.data = data;
+        r.msg = msg;
+        r.description = "ok";
+        return r;
     }
+
+    public static R<?> error(int code, String msg, String description) {
+        R<?> r = new R<>();
+        r.setCode(code);
+        r.setMsg(msg);
+        r.setDescription(description);
+        return r;
+    }
+
+    public static R<?> error(ErrorCode errorCode) {
+        R<?> r = new R<>();
+        r.setCode(errorCode.getCode());
+        r.setMsg(errorCode.getMessage());
+        r.setDescription(errorCode.getDescription());
+        return r;
+    }
+
+    public static R<?> error(ErrorCode errorCode, String msg, String description) {
+        R<?> r = new R<>();
+        r.setCode(errorCode.getCode());
+        r.setMsg(msg);
+        r.setDescription(description);
+        return r;
+    }
+
+    public static R<?> error(ErrorCode errorCode, String description) {
+        R<?> r = new R<>();
+        r.setCode(errorCode.getCode());
+        r.setMsg(errorCode.getMessage());
+        r.setDescription(description);
+        return r;
+    }
+
+
+
 }

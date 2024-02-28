@@ -23,6 +23,7 @@ public class PlanRecord implements Serializable {
     /**
      * 用户id
      */
+    @TableField(fill = FieldFill.INSERT)
     private Long userId;
 
     /**
@@ -38,6 +39,7 @@ public class PlanRecord implements Serializable {
     /**
      * 记录时间
      */
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
     /**

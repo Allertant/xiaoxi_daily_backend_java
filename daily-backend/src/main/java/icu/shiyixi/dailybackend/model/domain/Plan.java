@@ -28,16 +28,19 @@ public class Plan implements Serializable {
     /**
      * 用户id
      */
+    @TableField(fill = FieldFill.INSERT)
     private Long userId;
 
     /**
      * 创建时间
      */
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
     /**
      * 更新时间
      */
+    @TableField(fill = FieldFill.UPDATE)
     private LocalDateTime updateTime;
 
     /**

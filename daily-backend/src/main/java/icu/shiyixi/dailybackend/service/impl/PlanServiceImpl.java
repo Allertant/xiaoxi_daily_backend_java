@@ -107,11 +107,8 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         if(dto.getName() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "计划名不能为空");
         }
-        // 校验计划对象中的用户是否为该用户
+
         Long userId = BaseContext.getCurrentId();
-        if (!Objects.equals(userId, dto.getUserId())) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "非法操作，只能添加自己的计划");
-        }
 
         // 准备要插入的对象
         Plan plan = new Plan();
@@ -192,7 +189,7 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
 
         // 清除缓存
         planObjectDtoCache.removeCachePlanObjectDto(planId);
-
+        plansCache.removeCachePlans(planId);
         return R.success("更新成功");
     }
 

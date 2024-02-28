@@ -3,7 +3,6 @@ package icu.shiyixi.dailybackend.controller;
 import com.google.code.kaptcha.impl.DefaultKaptcha;
 import icu.shiyixi.dailybackend.common.R;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.util.Base64Utils;
 import org.springframework.web.bind.annotation.*;

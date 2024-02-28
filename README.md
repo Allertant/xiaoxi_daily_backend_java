@@ -1,3 +1,29 @@
 ### 小兮打卡后台
+<a href="https://github.com/Allertant/xiaoxi_daily_front_uniapp">访问小兮打卡前台</a>
 
-<a href="https://github.com/Allertant/xiaoxi_daily_front_uniapp">访问小兮前台</a>
+#### 一、项目架构
+1. 框架：Spring + SpringBoot + MybatisPlus
+2. 数据库：Mysql + Redis
+#### 二、大致功能
+1. 登录模块
+- 随机生成验证码
+- 用户登录成功后，会将标识用户信息的 token 封装在 cookie 中
+- 每当用户再次调用后端接口时，会更新 toke 值，并再次写入 cookie 中
+2. 计划模块
+- 添加计划
+- 删除计划
+- 修改计划
+- 展示计划
+3. 打卡模块
+- 返回用户打卡界面
+- 当用户打卡时，校验打卡信息，成功后返回处理结果
+4. 历史模块
+- 返回用户历史打卡信息，根据计划 id 查询用户信息
+#### 三、项目优化点
+1. 自定义异常和异常状态码，用于统一处理业务错误
+2. 使用缓存技术，将用户热点数据进行缓存，减少对数据库的压力
+- 提取 cache 模块，便于在业务代码中灵活地使用缓存
+
+#### 四、
+
+

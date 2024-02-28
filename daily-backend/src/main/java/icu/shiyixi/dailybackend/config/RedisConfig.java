@@ -26,20 +26,42 @@ public class RedisConfig extends CachingConfigurerSupport {
     @Bean
     @SuppressWarnings("all")
     public RedisTemplate<String,Object> redisTemplate(RedisConnectionFactory redisConnectionFactory){
-        RedisTemplate<String, Object> template = new RedisTemplate<>();
-        template.setConnectionFactory(redisConnectionFactory);
+        RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
+        redisTemplate.setConnectionFactory(redisConnectionFactory);
+
         FastJsonRedisSerializer serializer = new FastJsonRedisSerializer(Object.class);
 
-        template.setKeySerializer(new StringRedisSerializer());
-        template.setValueSerializer(serializer);
+        // 设置序列化器
+        redisTemplate.setKeySerializer(new StringRedisSerializer());
+        redisTemplate.setValueSerializer(serializer);
 
-        template.setHashKeySerializer(new StringRedisSerializer());
-        template.setHashValueSerializer(serializer);
-        template.afterPropertiesSet();
+        redisTemplate.setHashKeySerializer(new StringRedisSerializer());
+        redisTemplate.setHashValueSerializer(serializer);
 
-        return template;
+        redisTemplate.afterPropertiesSet();
+
+
+
+
+
+
+        return redisTemplate;
+//        RedisTemplate<String, Object> template = new RedisTemplate<>();
+//
+//        template.setConnectionFactory(redisConnectionFactory);
+//        FastJsonRedisSerializer serializer = new FastJsonRedisSerializer(Object.class);
+//
+//        template.setKeySerializer(new StringRedisSerializer());
+//        template.setValueSerializer(serializer);
+//
+//        template.setHashKeySerializer(new StringRedisSerializer());
+//        template.setHashValueSerializer(serializer);
+//
+//        template.afterPropertiesSet();
+//
+//        return template;
     }
-    @Bean
+//    @Bean
     public CacheManager cacheManager(RedisConnectionFactory redisConnectionFactory) {
         //初始化一个RedisCacheWriter
         RedisCacheWriter redisCacheWriter = RedisCacheWriter

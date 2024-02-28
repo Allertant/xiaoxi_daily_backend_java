@@ -5,10 +5,14 @@ import icu.shiyixi.dailybackend.model.domain.PlanDetail;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
-@EqualsAndHashCode(callSuper = true)
 @Data
-public class PlanObjectDto extends Plan {
-    private List<PlanDetail> details;
+public class PlanObjectDto extends Plan implements Serializable {
+
+    private List<PlanDetail> details = new ArrayList<>();
+
+    private static final long serialVersionUID = 1L;
 }

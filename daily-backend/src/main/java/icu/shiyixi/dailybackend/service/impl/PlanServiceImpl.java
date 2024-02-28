@@ -2,6 +2,10 @@ package icu.shiyixi.dailybackend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import icu.shiyixi.dailybackend.cache.PlanDetailDtosCache;
+import icu.shiyixi.dailybackend.cache.PlanHistoryCache;
+import icu.shiyixi.dailybackend.cache.PlanObjectDtoCache;
+import icu.shiyixi.dailybackend.cache.PlansCache;
 import icu.shiyixi.dailybackend.common.BaseContext;
 import icu.shiyixi.dailybackend.common.ErrorCode;
 import icu.shiyixi.dailybackend.common.R;
@@ -22,12 +26,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
+import javax.swing.plaf.metal.MetalBorders;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static com.alibaba.fastjson.JSON.parse;
 
 @Slf4j
 @Service
@@ -38,10 +45,22 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
     private PlanDetailMapper planDetailMapper;
     @Resource
     private PlanRecordMapper planRecordMapper;
-
+    @Resource
+    private PlanObjectDtoCache planObjectDtoCache;
+    @Resource
+    private PlansCache plansCache;
+    @Resource
+    private PlanDetailDtosCache planDetailDtosCache;
+    @Resource
+    private PlanHistoryCache planHistoryCache;
 
     @Override
     public R<PlanObjectDto> getPlanObjDtoByPlanId(Long planId) {
+        // 获取缓存
+        PlanObjectDto cachePlanObjectDto = planObjectDtoCache.getCachePlanObjectDto(planId);
+        if(cachePlanObjectDto != null) {
+            return R.success(cachePlanObjectDto);
+        }
         // 准备返回的对象
         PlanObjectDto dto = new PlanObjectDto();
 
@@ -57,14 +76,28 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         // 将计划项插入dto中
         dto.setDetails(planDetails);
 
+        //写入缓存
+        planObjectDtoCache.setCachePlanObjectDto(dto);
+
         return R.success(dto);
     }
 
     @Override
     public List<Plan> getPlansByUserId(Long userId) {
+        // 尝试获取缓存
+        List<Plan> cachePlans = plansCache.getCachePlans(userId);
+        if(cachePlans != null) {
+            return cachePlans;
+        }
+
+        // 数据库查询
         LambdaQueryWrapper<Plan> q = new LambdaQueryWrapper<>();
         q.eq(Plan::getUserId, userId);
-        return planMapper.selectList(q);
+        List<Plan> plans = planMapper.selectList(q);
+
+        // 设置缓存
+        plansCache.setCachePlans(plans, userId);
+        return plans;
     }
 
     @Override
@@ -73,6 +106,11 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         // 验证数据合法性
         if(dto.getName() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "计划名不能为空");
+        }
+        // 校验计划对象中的用户是否为该用户
+        Long userId = BaseContext.getCurrentId();
+        if (!Objects.equals(userId, dto.getUserId())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "非法操作，只能添加自己的计划");
         }
 
         // 准备要插入的对象
@@ -94,6 +132,8 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
             planDetailMapper.insert(detail);
         }
 
+        // 清除缓存
+        plansCache.removeCachePlans(userId);
         return R.success("计划添加成功");
     }
 
@@ -109,10 +149,13 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
             throw new BusinessException(ErrorCode.PLAN_NULL);
         }
 
-        // 删除用户
+        // 删除计划
         boolean b = this.removeById(planId);
         if(b) {
-            return R.success("删除成功", "删除用户成功");
+            // 清除缓存
+            planObjectDtoCache.removeCachePlanObjectDto(planId);
+            plansCache.removeCachePlans(userId);
+            return R.success("删除成功", "删除计划成功");
         }else {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "系统异常");
         }
@@ -146,6 +189,10 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
             planDetailMapper.insert(item);
         });
         log.info("计划id：{},更新成功", plan.getId());
+
+        // 清除缓存
+        planObjectDtoCache.removeCachePlanObjectDto(planId);
+
         return R.success("更新成功");
     }
 
@@ -173,16 +220,33 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         // 3. 设置该用户使用该计划
         plan.setIsOn(1);
         planMapper.updateById(plan);
+
+        // 清除缓存
+        plansCache.removeCachePlans(userId);
+
         return R.success("设置成功", "设置成功");
     }
 
     @Override
     public R<List<PlanDetailsDto>> getDetails() {
         Long userId = BaseContext.getCurrentId();
+
         Plan plan = getOne(new LambdaQueryWrapper<Plan>()
                 .eq(Plan::getUserId, userId)
                 .eq(Plan::getIsOn, 1));
+
+        if(plan == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前还没有正在使用的计划");
+        }
+
         Long planId = plan.getId();
+
+        // 获取缓存
+        List<PlanDetailsDto> cachePlanDetailDtos = planDetailDtosCache.getCachePlanDetailDtos(planId);
+        if(cachePlanDetailDtos != null) {
+            return R.success(cachePlanDetailDtos);
+        }
+
 
         // 获取原始计划项数组
         List<PlanDetail> planDetails = planDetailMapper.selectList(new LambdaQueryWrapper<PlanDetail>()
@@ -241,6 +305,10 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
                 item.setMsg("已完成");
             }
         });
+
+        // 添加缓存
+        planDetailDtosCache.setCachePlanDetailDtos(planDetailsDtos, planId);
+
         return R.success(planDetailsDtos);
     }
 
@@ -252,6 +320,7 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         // 1.1 获取正在被使用的计划
         Plan plan = planMapper.selectOne(new LambdaQueryWrapper<Plan>()
                 .eq(Plan::getIsOn, 1)
+                .eq(Plan::getUserId,userId)
                 .eq(Plan::getUserId, userId));
         if(plan == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前没有可用的计划");
@@ -292,6 +361,9 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         planRecord.setPlanDetailId(planDetailId);
         int insert = planRecordMapper.insert(planRecord);
         if(insert != 0) {
+            // 清除缓存
+            planDetailDtosCache.removeCachePlanDetailDtos(planId);
+            planHistoryCache.removeCachePlanHistory(planId);
             return R.success("打卡成功");
         }else {
             return R.success("打开失败");
@@ -311,6 +383,12 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
         }
 
         Long planId = plan.getId();
+
+        // 获取缓存
+        List<PlanRecordDto> cachePlanHistory = planHistoryCache.getCachePlanHistory(planId);
+        if (cachePlanHistory != null) {
+            return R.success(cachePlanHistory);
+        }
 
         // 获取某个计划的所有打卡记录
         List<PlanRecord> planRecords = planRecordMapper.selectList(new LambdaQueryWrapper<PlanRecord>()
@@ -341,6 +419,9 @@ public class PlanServiceImpl extends ServiceImpl<PlanMapper, Plan> implements Pl
                 }
             });
         });
+
+        // 放入缓存
+        planHistoryCache.setCachePlanHistory(planRecordDtos, planId);
 
         return R.success(planRecordDtos);
     }

@@ -6,7 +6,6 @@ import lombok.EqualsAndHashCode;
 
 import java.time.LocalTime;
 
-@EqualsAndHashCode(callSuper = true)
 @Data
 public class PlanRecordDto extends PlanRecord {
     private LocalTime beginTime;

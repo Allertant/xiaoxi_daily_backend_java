@@ -5,7 +5,6 @@ spring:
     username: shiyixi
     password: '@SY315131x666'
     driver-class-name: com.mysql.cj.jdbc.Driver
-
   # for redis
   redis:
     host: 119.91.61.248

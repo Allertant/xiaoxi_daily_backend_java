@@ -4,7 +4,6 @@ import icu.shiyixi.dailybackend.model.domain.PlanDetail;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-@EqualsAndHashCode(callSuper = true)
 @Data
 public class PlanDetailsDto extends PlanDetail {
     private String msg;

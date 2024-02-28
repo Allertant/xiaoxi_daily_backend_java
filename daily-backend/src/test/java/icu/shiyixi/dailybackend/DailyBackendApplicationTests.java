@@ -21,4 +21,8 @@ class DailyBackendApplicationTests {
         }
     }
 
+    @Test
+    void testForInstanceOf() {
+        System.out.println(null instanceof Object);
+    }
 }
